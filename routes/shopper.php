@@ -15,6 +15,8 @@ use App\Livewire\Message\Thread as MessageThread;
 use App\Livewire\Voucher\Create as VoucherCreate;
 use App\Livewire\Voucher\Index as VoucherIndex;
 use App\Livewire\Voucher\Show as VoucherShow;
+use App\Livewire\Staff\Create as StaffCreate;
+use App\Livewire\Staff\Edit as StaffEdit;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('commissions')->as('commissions.')->group(function (): void {
@@ -43,5 +45,8 @@ Route::prefix('vouchers')->as('vouchers.')->group(function (): void {
     Route::get('/create', VoucherCreate::class)->name('create');
     Route::get('/{voucher}', VoucherShow::class)->name('show');
 });
+
+Route::get('/setting/team/create', StaffCreate::class)->name('settings.users.create');
+Route::get('/setting/team/{user}/edit', StaffEdit::class)->name('settings.users.edit');
 
 Route::get('/inventory', InventoryIndex::class)->name('inventory.index');

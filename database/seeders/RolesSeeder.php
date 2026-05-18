@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Shopper\Core\Models\Permission;
 use Shopper\Core\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -21,6 +22,8 @@ class RolesSeeder extends Seeder
         $roles = $this->createRoles();
 
         $this->syncPermissions($roles);
+        $this->removeDuplicateAdminRole();
+        $this->removeDuplicateCustomerRole();
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
@@ -63,7 +66,6 @@ class RolesSeeder extends Seeder
         $allPermissions = Permission::query()->pluck('name')->all();
 
         $roles['administrator']->syncPermissions($allPermissions);
-        $roles['admin']->syncPermissions($allPermissions);
 
         foreach ($this->rolePermissions() as $role => $permissions) {
             $existingPermissions = Permission::query()
@@ -81,10 +83,6 @@ class RolesSeeder extends Seeder
             'administrator' => [
                 'display' => 'Administrator',
                 'description' => 'Full system access through Shopper and ZeShop modules.',
-            ],
-            'admin' => [
-                'display' => 'Admin',
-                'description' => 'Full system access as described in the ZeShop contributor guide.',
             ],
             'manager' => [
                 'display' => 'Manager',
@@ -106,13 +104,9 @@ class RolesSeeder extends Seeder
                 'display' => 'Seller',
                 'description' => 'Product listing and commission visibility.',
             ],
-            'customer' => [
-                'display' => 'Customer',
-                'description' => 'End buyer access for own orders and profile.',
-            ],
             'user' => [
-                'display' => 'User',
-                'description' => 'Shopper default customer role.',
+                'display' => 'Customers',
+                'description' => 'End buyer access for own orders and profile.',
             ],
         ];
     }
@@ -225,13 +219,6 @@ class RolesSeeder extends Seeder
                 'browse_commissions',
                 'read_commissions',
             ],
-            'customer' => [
-                'browse_orders',
-                'read_orders',
-                'browse_profile',
-                'read_profile',
-                'edit_profile',
-            ],
             'user' => [
                 'browse_orders',
                 'read_orders',
@@ -240,5 +227,69 @@ class RolesSeeder extends Seeder
                 'edit_profile',
             ],
         ];
+    }
+
+    private function removeDuplicateAdminRole(): void
+    {
+        $admin = Role::query()->where('name', 'admin')->first();
+        $administrator = Role::query()->where('name', config('shopper.core.users.admin_role'))->first();
+
+        if (! $admin || ! $administrator) {
+            return;
+        }
+
+        $adminAssignments = DB::table('model_has_roles')
+            ->where('role_id', $admin->id)
+            ->get();
+
+        foreach ($adminAssignments as $assignment) {
+            DB::table('model_has_roles')->updateOrInsert([
+                'role_id' => $administrator->id,
+                'model_type' => $assignment->model_type,
+                'model_id' => $assignment->model_id,
+            ]);
+        }
+
+        DB::table('model_has_roles')
+            ->where('role_id', $admin->id)
+            ->delete();
+
+        DB::table('role_has_permissions')
+            ->where('role_id', $admin->id)
+            ->delete();
+
+        $admin->delete();
+    }
+
+    private function removeDuplicateCustomerRole(): void
+    {
+        $customer = Role::query()->where('name', 'customer')->first();
+        $defaultCustomer = Role::query()->where('name', config('shopper.core.users.default_role'))->first();
+
+        if (! $customer || ! $defaultCustomer) {
+            return;
+        }
+
+        $customerAssignments = DB::table('model_has_roles')
+            ->where('role_id', $customer->id)
+            ->get();
+
+        foreach ($customerAssignments as $assignment) {
+            DB::table('model_has_roles')->updateOrInsert([
+                'role_id' => $defaultCustomer->id,
+                'model_type' => $assignment->model_type,
+                'model_id' => $assignment->model_id,
+            ]);
+        }
+
+        DB::table('model_has_roles')
+            ->where('role_id', $customer->id)
+            ->delete();
+
+        DB::table('role_has_permissions')
+            ->where('role_id', $customer->id)
+            ->delete();
+
+        $customer->delete();
     }
 }

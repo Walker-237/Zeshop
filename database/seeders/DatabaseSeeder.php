@@ -31,6 +31,6 @@ class DatabaseSeeder extends Seeder
             'tel' => '+237600000000',
         ]);
 
-        $user->assignRole('admin');
+        $user->syncRoles([config('shopper.core.users.admin_role')]);
     }
 }
