@@ -2,23 +2,27 @@
 namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 
 class AuthController extends Controller{
 
      public function store(Request $request){
-        $request->validate([
-            // 'name'=>'required|string|max:255',
-            // 'email'=>'required|email',
-            // 'tel'=>'required',
-            // 'password'=>'required|min:6|confirmed',
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'tel' => 'nullable|string|max:255|unique:users,tel',
+            'password' => 'required|min:6',
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email'=> $request->email,
-            'tel'=> $request->tel,
-            'password'=> bcrypt($request->password),
+        User::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'tel' => $validated['tel'] ?? null,
+            'gender' => 'male',
+            'password' => Hash::make($validated['password']),
         ]);
 
         return redirect('/login');

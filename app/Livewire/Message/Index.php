@@ -1,0 +1,130 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Message;
+
+use App\Models\Message;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Support\Enums\MaxWidth;
+use Filament\Tables;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Shopper\Facades\Shopper;
+use Shopper\Livewire\Pages\AbstractPageComponent;
+
+class Index extends AbstractPageComponent implements HasForms, HasTable
+{
+    use InteractsWithForms;
+    use InteractsWithTable;
+
+    public function mount(): void
+    {
+        $this->authorize('viewAny', Message::class);
+    }
+
+    public function table(Table $table): Table
+    {
+        $user = Shopper::auth()->user();
+
+        return $table
+            ->query(
+                Message::query()
+                    ->with(['sender', 'recipient'])
+                    ->when($user, fn (Builder $query) => $query->visibleTo($user))
+                    ->whereNull('archived_at')
+                    ->latest()
+            )
+            ->columns([
+                Tables\Columns\IconColumn::make('read_at')
+                    ->label('')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-envelope-open')
+                    ->falseIcon('heroicon-o-envelope')
+                    ->trueColor('gray')
+                    ->falseColor('primary')
+                    ->state(fn (Message $record): bool => filled($record->read_at)),
+                Tables\Columns\TextColumn::make('subject')
+                    ->searchable()
+                    ->sortable()
+                    ->weight(fn (Message $record): string => blank($record->read_at) ? 'bold' : 'medium')
+                    ->description(fn (Message $record): string => str($record->body)->limit(90)->toString()),
+                Tables\Columns\TextColumn::make('sender.full_name')
+                    ->label('From')
+                    ->placeholder('System')
+                    ->searchable(['first_name', 'last_name']),
+                Tables\Columns\TextColumn::make('recipient.full_name')
+                    ->label('To')
+                    ->placeholder('Unknown')
+                    ->searchable(['first_name', 'last_name']),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Sent')
+                    ->dateTime()
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\Filter::make('unread')
+                    ->label('Unread')
+                    ->query(fn (Builder $query): Builder => $query->whereNull('read_at')),
+                Tables\Filters\SelectFilter::make('mailbox')
+                    ->options([
+                        'inbox' => 'Inbox',
+                        'sent' => 'Sent',
+                    ])
+                    ->query(function (Builder $query, array $data) use ($user): Builder {
+                        if (! $user || blank($data['value'] ?? null)) {
+                            return $query;
+                        }
+
+                        return $data['value'] === 'sent'
+                            ? $query->where('sender_id', $user->id)
+                            : $query->where('recipient_id', $user->id);
+                    }),
+            ])
+            ->actions([
+                Tables\Actions\Action::make('view')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (Message $record): string => route('shopper.messages.thread', $record))
+                    ->openUrlInNewTab(false),
+                Tables\Actions\Action::make('markRead')
+                    ->label('Mark read')
+                    ->icon('heroicon-o-envelope-open')
+                    ->color('success')
+                    ->visible(fn (Message $record): bool => auth()->user()?->can('update', $record) && blank($record->read_at))
+                    ->authorize(fn (Message $record): bool => auth()->user()?->can('update', $record) ?? false)
+                    ->action(fn (Message $record) => $record->update([
+                        'read_at' => now(),
+                    ])),
+                Tables\Actions\Action::make('markUnread')
+                    ->label('Mark unread')
+                    ->icon('heroicon-o-envelope')
+                    ->visible(fn (Message $record): bool => auth()->user()?->can('update', $record) && filled($record->read_at))
+                    ->authorize(fn (Message $record): bool => auth()->user()?->can('update', $record) ?? false)
+                    ->action(fn (Message $record) => $record->update([
+                        'read_at' => null,
+                    ])),
+                Tables\Actions\Action::make('archive')
+                    ->label('Archive')
+                    ->icon('heroicon-o-archive-box')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (Message $record): bool => auth()->user()?->can('delete', $record) ?? false)
+                    ->authorize(fn (Message $record): bool => auth()->user()?->can('delete', $record) ?? false)
+                    ->action(fn (Message $record) => $record->update([
+                        'archived_at' => now(),
+                    ])),
+            ])
+            ->filtersFormWidth(MaxWidth::Medium);
+    }
+
+    public function render(): View
+    {
+        return view('livewire.message.index')
+            ->title('Messages');
+    }
+}

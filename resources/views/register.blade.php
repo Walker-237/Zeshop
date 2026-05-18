@@ -471,10 +471,10 @@
         @csrf
           <div class="row">
           <div class="field">
-            <input type="text" placeholder="First name" name="name"/>
+            <input type="text" placeholder="First name" name="first_name"/>
           </div>
           <div class="field">
-            <input type="text" placeholder="Last name" />
+            <input type="text" placeholder="Last name" name="last_name"/>
           </div>
         </div>
 
@@ -488,7 +488,7 @@
 
         <div class="field">
           <input type="password" id="pwd" placeholder="Enter your password" name="password"/>
-          <button class="eye-btn" onclick="togglePwd()" aria-label="Toggle password">
+          <button type="button" class="eye-btn" onclick="togglePwd()" aria-label="Toggle password">
             <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </svg>
