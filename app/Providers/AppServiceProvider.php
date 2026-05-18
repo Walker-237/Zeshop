@@ -19,6 +19,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $source = base_path('vendor/shopper/framework/public/images');
+        $destination = public_path('cpanel/images');
+
+        if (is_dir($source)) {
+            \Illuminate\Support\Facades\File::copyDirectory($source, $destination);
+        }
     }
 }
