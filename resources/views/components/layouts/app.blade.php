@@ -224,7 +224,7 @@
   <a href="{{ route('home') }}" class="logo">Ze<span>Shop</span></a>
   <nav class="topbar-nav">
     <a href="{{ route('home') }}">Storefront</a>
-    <a href="{{ route('inventory.index') }}" class="{{ request()->routeIs('inventory.*') ? 'active' : '' }}">Inventory</a>
+    <a href="{{ route('shopper.inventory.index') }}" class="{{ request()->routeIs('inventory.*') ? 'active' : '' }}">Inventory</a>
     <a href="/cpanel/dashboard">Admin Panel</a>
   </nav>
   <div class="topbar-right">
@@ -238,7 +238,7 @@
 <div class="shell">
   <aside class="sidebar">
     <div class="sidebar-label">Stock Management</div>
-    <a href="{{ route('inventory.index') }}" class="sidebar-link {{ request()->routeIs('inventory.index') ? 'active' : '' }}">
+    <a href="{{ route('shopper.inventory.index') }}" class="sidebar-link {{ request()->routeIs('inventory.index') ? 'active' : '' }}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
       Overview
     </a>

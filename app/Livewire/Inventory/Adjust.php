@@ -15,15 +15,15 @@ class Adjust extends Component
     public int $quantity = 0;
     public int $inventoryId;
     public string $description = '';
-
+    
     public function mount(int $productId): void
     {
         $this->product = Product::with('inventoryHistories')->findOrFail($productId);
-        $this->inventoryId = Inventory::scoped()->default()->first()?->id
+        $this->inventoryId = Inventory::where('is_default', true)->first()?->id
             ?? Inventory::first()?->id;
         $this->quantity = $this->product->stock;
     }
-
+    
     public function save(): void
     {
         $this->validate([
@@ -32,14 +32,21 @@ class Adjust extends Component
             'description' => 'nullable|string|max:255',
         ]);
 
-        $this->product->setStock($this->quantity, $this->inventoryId, [
-            'description' => $this->description ?: 'Manual stock adjustment',
-            'event'       => 'manual_adjustment',
-        ]);
+        $oldQuantity = $this->product->stock ?? 0;
+
+        $this->product->mutateStock(
+            $this->inventoryId,
+            $this->quantity - $oldQuantity,
+            [
+                'old_quantity' => $oldQuantity,
+                'description'  => $this->description ?: 'Manual stock adjustment',
+                'event'        => 'manual_adjustment',
+            ]
+        );
 
         session()->flash('success', 'Stock updated successfully.');
 
-        $this->redirect(route('inventory.index'));
+        $this->redirect(route('shopper.inventory.index'));
     }
 
     public function render(): View

@@ -17,6 +17,7 @@ use App\Livewire\Voucher\Index as VoucherIndex;
 use App\Livewire\Voucher\Show as VoucherShow;
 use App\Livewire\Staff\Create as StaffCreate;
 use App\Livewire\Staff\Edit as StaffEdit;
+use App\Livewire\Inventory\Adjust as InventoryAdjust;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('commissions')->as('commissions.')->group(function (): void {
@@ -49,4 +50,7 @@ Route::prefix('vouchers')->as('vouchers.')->group(function (): void {
 Route::get('/setting/team/create', StaffCreate::class)->name('settings.users.create');
 Route::get('/setting/team/{user}/edit', StaffEdit::class)->name('settings.users.edit');
 
-// Route::get('/inventory', InventoryIndex::class)->name('inventory.index');
+Route::prefix('inventory')->as('inventory.')->group(function (): void {
+    Route::get('/', InventoryIndex::class)->name('index');
+    Route::get('/{productId}/adjust', InventoryAdjust::class)->name('adjust');
+});

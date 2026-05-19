@@ -1,6 +1,6 @@
 <div>
   <div class="page-header" style="display:flex;align-items:center;gap:16px;">
-    <a href="{{ route('inventory.index') }}" class="back-btn">← Back</a>
+    <a href="{{ route('shopper.inventory.index') }}" class="back-btn">← Back</a>
     <div>
       <h1>Adjust Stock</h1>
       <p>{{ $product->name }}</p>

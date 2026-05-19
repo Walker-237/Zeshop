@@ -9,8 +9,6 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\Auth\CustomerLoginController;
 use App\Http\Controllers\Auth\CustomerRegisterController;
 use App\Http\Controllers\OrderController;
-use App\Livewire\Inventory\Index as InventoryIndex;
-use App\Livewire\Inventory\Adjust as InventoryAdjust;
 
 Route::get('/', function () {
     $categories  = Category::where('is_enabled', true)->get();
@@ -112,9 +110,4 @@ Route::middleware('auth')->group(function () {
         $total = collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
         return view('checkout', compact('categories', 'cart', 'total'));
     })->name('checkout');
-});
-
-Route::middleware(['auth'])->prefix('cpanel')->group(function () {
-    Route::get('/inventory', InventoryIndex::class)->name('inventory.index');
-    Route::get('/inventory/{productId}/adjust', InventoryAdjust::class)->name('inventory.adjust');
 });
