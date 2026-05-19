@@ -111,3 +111,5 @@ Route::middleware('auth')->group(function () {
         return view('checkout', compact('categories', 'cart', 'total'));
     })->name('checkout');
 });
+
+Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt'])->name('orders.receipt');
