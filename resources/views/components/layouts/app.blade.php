@@ -130,11 +130,18 @@
   .search-input:focus { border-color: var(--blue); background: var(--white); }
   .search-input::placeholder { color: var(--muted); }
   .filter-btn {
-    background: var(--pale); border: 0.5px solid var(--border);
+    background: var(--pale) !important; border: 0.5px solid var(--border);
     color: var(--ink); font-family: var(--sans); font-size: 13px;
     padding: 8px 16px; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+    background-image: none !important;
   }
   .filter-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .filter-btn option {
+    color: var(--ink); background: var(--white); padding: 8px;
+  }
+  .filter-btn option[value=""] {
+    color: var(--muted);
+  }
 
   table { width: 100%; border-collapse: collapse; }
   thead { background: var(--pale); }
