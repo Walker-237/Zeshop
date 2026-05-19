@@ -111,11 +111,3 @@ Route::middleware('auth')->group(function () {
         return view('checkout', compact('categories', 'cart', 'total'));
     })->name('checkout');
 });
-
-use App\Livewire\Inventory\Index as InventoryIndex;
-use App\Livewire\Inventory\Adjust as InventoryAdjust;
-
-Route::middleware(['auth'])->prefix('cpanel')->group(function () {
-    Route::get('/inventory', InventoryIndex::class)->name('inventory.index');
-    Route::get('/inventory/{productId}/adjust', InventoryAdjust::class)->name('inventory.adjust');
-});

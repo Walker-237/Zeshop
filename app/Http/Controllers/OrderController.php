@@ -79,4 +79,19 @@ class OrderController extends Controller
 
         return redirect()->route('account')->with('success', 'Order placed successfully!');
     }
+
+    public function receipt(\Shopper\Core\Models\Order $order)
+    {
+        if ($order->customer_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $address = \Illuminate\Support\Facades\DB::table('sh_order_addresses')
+            ->where('id', $order->shipping_address_id)
+            ->first();
+
+        $metadata = json_decode($order->metadata, true);
+
+        return view('orders.receipt', compact('order', 'address', 'metadata'));
+    }
 }

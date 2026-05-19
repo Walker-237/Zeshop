@@ -83,7 +83,7 @@
               @endif
             </td>
             <td>
-              <a href="{{ route('inventory.adjust', $product->id) }}" class="adj-btn">Adjust</a>
+              <a href="{{ route('shopper.inventory.adjust', $product->id) }}" class="adj-btn">Adjust</a>
             </td>
           </tr>
         @endforeach
