@@ -2,7 +2,17 @@
 
 namespace App\Providers;
 
+use App\Models\Commission;
+use App\Models\Delivery;
+use App\Models\Message;
+use App\Models\Report;
+use App\Models\Voucher;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Shopper\Facades\Shopper;
+use Shopper\Sidebar\Contracts\Builder\Group;
+use Shopper\Sidebar\Contracts\Builder\Item;
+use Shopper\Sidebar\SidebarBuilder;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,11 +29,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $source = base_path('vendor/shopper/framework/public/images');
-        $destination = public_path('cpanel/images');
-
-        if (is_dir($source)) {
-            \Illuminate\Support\Facades\File::copyDirectory($source, $destination);
-        }
+        //
     }
 }
