@@ -13,8 +13,8 @@ return new class extends Migration
             $table->string('name')->nullable(); // Shopper will drop this, keep it nullable
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('tel')->unique()->nullable();
-            $table->string('password')->nullable(); // Shopper sets this nullable too
+            $table->string('tel')->nullable()->unique();
+            $table->string('password');
             $table->rememberToken();
             $table->timestamps();
         });

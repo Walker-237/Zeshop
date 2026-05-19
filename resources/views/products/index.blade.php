@@ -344,69 +344,7 @@
 <body>
 
 {{-- ANNOUNCEMENT BAR --}}
-<div class="announce">
-  Welcome to ZeShop — New users get <span>15% off</span> their first order!
-  <a href="{{ route('products.index') }}">Shop now →</a>
-</div>
-
-{{-- TOP NAV --}}
-<nav class="topnav">
-  <a href="{{ route('home') }}" class="logo">Ze<span>Shop</span></a>
-
-  <form action="{{ route('products.index') }}" method="GET" class="search-wrap">
-    <select name="category">
-      <option value="">All Categories</option>
-      @foreach($categories as $cat)
-        <option value="{{ $cat->slug }}" {{ request('category') === $cat->slug ? 'selected' : '' }}>
-          {{ $cat->name }}
-        </option>
-      @endforeach
-    </select>
-    <input type="text" name="q" placeholder="Search for products, brands and more…" value="{{ request('q') }}">
-    <button type="submit">Search</button>
-  </form>
-
-  <div class="topnav-actions">
-    @auth
-      <a href="{{ route('account') }}" class="action-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Account
-      </a>
-    @else
-      <a href="{{ route('login') }}" class="action-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Sign In
-      </a>
-    @endauth
-
-    <a href="#" class="action-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-      Wishlist
-    </a>
-
-    <a href="{{ route('cart') }}" class="action-btn" style="position:relative">
-      <div style="position:relative">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-        <span class="cart-badge">0</span>
-      </div>
-      Cart
-    </a>
-  </div>
-</nav>
-
-{{-- CATEGORY NAV --}}
-<nav class="catnav">
-  <a href="{{ route('home') }}">Home</a>
-  @foreach($categories as $cat)
-    <a href="{{ route('categories.show', $cat->slug) }}"
-       class="{{ request('category') === $cat->slug ? 'active' : '' }}">
-      {{ $cat->name }}
-    </a>
-  @endforeach
-  <a href="{{ route('products.index') }}"
-     class="{{ !request()->anyFilled(['category','brand','q']) ? 'active' : '' }}"
-     style="color:#ff6b00; font-weight:500;">⚡ Flash Deals</a>
-</nav>
+@include('components.header')
 
 {{-- PAGE HEADER --}}
 <div class="page-header">
@@ -723,17 +661,51 @@
     });
   }
 
-  // Add to cart (hook up to your real cart logic)
+  // Add to cart
   function addToCart(e, productId) {
     e.preventDefault();
     e.stopPropagation();
     const btn = e.target;
     const orig = btn.textContent;
+    const origBg = btn.style.background;
+    
     btn.textContent = '✓ Added!';
     btn.style.background = 'var(--green)';
-    // TODO: POST to your cart route, e.g.:
-    // fetch('/cart/add', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'}, body: JSON.stringify({product_id: productId, quantity: 1}) })
-    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 1400);
+    btn.disabled = true;
+
+    fetch('{{ route("cart.add") }}', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        product_id: productId,
+        quantity: 1
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Update cart count in header
+        const badge = document.querySelector('.cart-badge');
+        if (badge) {
+          badge.textContent = data.cartCount;
+        }
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.style.background = origBg;
+          btn.disabled = false;
+        }, 1400);
+      }
+    })
+    .catch(err => {
+      console.error('Error:', err);
+      btn.textContent = orig;
+      btn.style.background = origBg;
+      btn.disabled = false;
+    });
   }
 
   // Wishlist toggle

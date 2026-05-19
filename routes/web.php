@@ -5,6 +5,10 @@ use Shopper\Core\Models\Product;
 use Shopper\Core\Models\Brand;
 use Shopper\Core\Models\Category;
 use Shopper\Core\Models\Collection;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\Auth\CustomerLoginController;
+use App\Http\Controllers\Auth\CustomerRegisterController;
+use App\Http\Controllers\OrderController;
 
 Route::get('/', function () {
     $categories  = Category::where('is_enabled', true)->get();
@@ -42,7 +46,15 @@ Route::get('/products/{slug}', function ($slug) {
     $product = \Shopper\Core\Models\Product::where('slug', $slug)
                 ->with('prices', 'brand', 'categories')
                 ->firstOrFail();
-    return view('products.show', compact('product'));
+    $categories = Category::where('is_enabled', true)->get();
+    $category = $product->categories()->first();
+    $products = Product::where('is_visible', true)
+                ->where('id', '!=', $product->id)
+                ->with('prices', 'brand')
+                ->inRandomOrder()
+                ->take(4)
+                ->get();
+    return view('products.show', compact('product', 'category', 'categories', 'products'));
 })->name('products.show');
 
 Route::get('/categories/{slug}', function ($slug) {
@@ -60,27 +72,43 @@ Route::get('/categories/{slug}', function ($slug) {
     return view('categories.show', compact('category', 'categories', 'products'));
 })->name('categories.show');
 
-Route::get('/cart', function () {
-    return view('cart');
-})->name('cart');
+Route::get('/wishlist', function () {
+    $categories = \Shopper\Core\Models\Category::select('id', 'name', 'slug')->get();
+    return view('wishlist', compact('categories'));
+})->name('wishlist');
+
+Route::get('/cart', [CartController::class, 'index'])->name('cart');
+Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
+Route::patch('/cart/{index}', [CartController::class, 'update'])->name('cart.update');
+Route::delete('/cart/{index}', [CartController::class, 'remove'])->name('cart.remove');
+Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+
+Route::post('/cart/sync', [CartController::class, 'sync'])->name('cart.sync');
 
 // Auth
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
 
-Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
+Route::middleware('guest')->group(function () {
+    Route::get('/login', fn() => view('auth.login'))->name('login');
+    Route::post('/login', [CustomerLoginController::class, 'store'])->name('login.store');
 
-// Account (protected)
+    Route::get('/register', fn() => view('auth.register'))->name('register');
+    Route::post('/register', [CustomerRegisterController::class, 'store'])->name('register.store');
+});
+
 Route::middleware('auth')->group(function () {
+    Route::post('/logout', [CustomerLoginController::class, 'destroy'])->name('logout');
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+
     Route::get('/account', function () {
-        return view('account.index');
+        $categories = Category::where('is_enabled', true)->get();
+        return view('account.index', compact('categories'));
     })->name('account');
 
     Route::get('/checkout', function () {
-        return view('checkout');
+        $categories = Category::where('is_enabled', true)->get();
+        $cart = session('cart', []);
+        $total = collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
+        return view('checkout', compact('categories', 'cart', 'total'));
     })->name('checkout');
 });
 

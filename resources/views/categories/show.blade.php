@@ -152,46 +152,7 @@
 <body>
 
 {{-- ANNOUNCEMENT --}}
-<div class="announce">
-    Welcome to ZeShop — New users get <span>15% off</span> their first order! 
-    <a href="{{ route('products.index') }}">Shop now →</a>
-</div>
-
-{{-- TOP NAV --}}
-<nav class="topnav">
-    <a href="{{ route('home') }}" class="logo">Ze<span>Shop</span></a>
-
-    <form action="{{ route('products.index') }}" method="GET" class="search-wrap">
-        <select name="category">
-            <option value="">All Categories</option>
-            @foreach($categories as $cat)
-                <option value="{{ $cat->slug }}">{{ $cat->name }}</option>
-            @endforeach
-        </select>
-        <input type="text" name="q" placeholder="Search products..." value="{{ request('q') }}">
-        <button type="submit">Search</button>
-    </form>
-
-    <div class="topnav-actions">
-        @auth
-            <a href="{{ route('account') }}">Account</a>
-        @else
-            <a href="{{ route('login') }}">Sign In</a>
-        @endauth
-        <a href="#">Wishlist</a>
-        <a href="{{ route('cart') }}">Cart</a>
-    </div>
-</nav>
-
-{{-- CATEGORY NAV --}}
-<nav class="catnav">
-    <a href="{{ route('home') }}">Home</a>
-    @foreach($categories as $cat)
-        <a href="{{ route('categories.show', $cat->slug) }}" class="{{ $cat->slug === $category->slug ? 'active' : '' }}">
-            {{ $cat->name }}
-        </a>
-    @endforeach
-</nav>
+@include('components.header')
 
 {{-- PAGE HEADER --}}
 <div class="page-header">
@@ -286,14 +247,44 @@
     function addToCart(btn, productId) {
         event.stopImmediatePropagation();
         const originalText = btn.textContent;
+        const originalBg = btn.style.background;
         btn.textContent = "✓ Added!";
         btn.style.background = "var(--green)";
+        btn.disabled = true;
 
-        // TODO: Add real AJAX call here later
-        setTimeout(() => {
+        fetch('{{ route("cart.add") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                product_id: productId,
+                quantity: 1
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update cart badge in header
+                const badges = document.querySelectorAll('.cart-badge');
+                badges.forEach(badge => {
+                    badge.textContent = data.cartCount;
+                });
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = originalBg;
+                    btn.disabled = false;
+                }, 1500);
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
             btn.textContent = originalText;
-            btn.style.background = "var(--blue)";
-        }, 1500);
+            btn.style.background = originalBg;
+            btn.disabled = false;
+        });
     }
 </script>
 </body>
