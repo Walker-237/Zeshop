@@ -10,14 +10,11 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('first_name');
-            $table->string('last_name');
+            $table->string('name')->nullable(); // Shopper will drop this, keep it nullable
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('tel')->unique()->nullable();
-            $table->string('gender')->nullable();
-            $table->string('password');
+            $table->string('password')->nullable(); // Shopper sets this nullable too
             $table->rememberToken();
             $table->timestamps();
         });
