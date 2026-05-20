@@ -19,6 +19,10 @@ class Delivery extends Model
         'assigned_at',
         'picked_up_at',
         'delivered_at',
+        'failed_at',
+        'cancelled_at',
+        'delivered_to',
+        'failure_reason',
         'notes',
     ];
 
@@ -29,6 +33,8 @@ class Delivery extends Model
             'assigned_at' => 'datetime',
             'picked_up_at' => 'datetime',
             'delivered_at' => 'datetime',
+            'failed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -40,5 +46,52 @@ class Delivery extends Model
     public function deliveryPerson(): BelongsTo
     {
         return $this->belongsTo(User::class, 'delivery_person_id');
+    }
+
+    public function markPickedUp(?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'picked_up',
+            'picked_up_at' => $this->picked_up_at ?? now(),
+            'notes' => $notes ?? $this->notes,
+        ]);
+    }
+
+    public function markInTransit(?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'in_transit',
+            'notes' => $notes ?? $this->notes,
+        ]);
+    }
+
+    public function markDelivered(?string $deliveredTo = null, ?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'delivered',
+            'delivered_at' => $this->delivered_at ?? now(),
+            'delivered_to' => $deliveredTo ?? $this->delivered_to,
+            'failure_reason' => null,
+            'notes' => $notes ?? $this->notes,
+        ]);
+    }
+
+    public function markFailed(?string $failureReason = null, ?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'failed',
+            'failed_at' => $this->failed_at ?? now(),
+            'failure_reason' => $failureReason ?? $this->failure_reason,
+            'notes' => $notes ?? $this->notes,
+        ]);
+    }
+
+    public function cancel(?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'cancelled',
+            'cancelled_at' => $this->cancelled_at ?? now(),
+            'notes' => $notes ?? $this->notes,
+        ]);
     }
 }

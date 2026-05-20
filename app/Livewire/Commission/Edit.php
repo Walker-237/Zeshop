@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Commission;
 
-use App\Actions\Commission\CreateCommissionAction;
+use App\Actions\Commission\UpdateCommissionAction;
 use App\Models\Commission;
 use App\Models\User;
 use Filament\Forms;
@@ -16,18 +16,28 @@ use Illuminate\Contracts\View\View;
 use Shopper\Core\Models\Order;
 use Shopper\Livewire\Pages\AbstractPageComponent;
 
-class Create extends AbstractPageComponent implements HasForms
+class Edit extends AbstractPageComponent implements HasForms
 {
     use InteractsWithForms;
 
+    public Commission $commission;
+
     public ?array $data = [];
 
-    public function mount(): void
+    public function mount(Commission $commission): void
     {
-        $this->authorize('create', Commission::class);
+        $this->authorize('update', $commission);
+
+        $this->commission = $commission->load(['order.items', 'seller']);
 
         $this->form->fill([
-            'rate' => 10,
+            'order_id' => $commission->order_id,
+            'seller_id' => $commission->seller_id,
+            'rate' => $commission->rate,
+            'amount' => $commission->amount,
+            'status' => $commission->status,
+            'payment_reference' => $commission->payment_reference,
+            'notes' => $commission->notes,
         ]);
     }
 
@@ -37,28 +47,12 @@ class Create extends AbstractPageComponent implements HasForms
             ->schema([
                 Forms\Components\Select::make('order_id')
                     ->label('Order')
-                    ->options(
-                        Order::query()
-                            ->latest()
-                            ->limit(50)
-                            ->get()
-                            ->mapWithKeys(fn (Order $order): array => [
-                                $order->id => $order->number . ' - ' . $order->currency_code . ' ' . number_format($order->total() / 100, 2),
-                            ])
-                    )
+                    ->options($this->orderOptions())
                     ->searchable()
                     ->required(),
                 Forms\Components\Select::make('seller_id')
                     ->label('Seller')
-                    ->options(
-                        User::query()
-                            ->orderBy('first_name')
-                            ->orderBy('last_name')
-                            ->get()
-                            ->mapWithKeys(fn (User $user): array => [
-                                $user->id => $user->full_name . ' - ' . $user->email,
-                            ])
-                    )
+                    ->options($this->sellerOptions())
                     ->searchable(),
                 Forms\Components\TextInput::make('rate')
                     ->label('Rate')
@@ -76,8 +70,8 @@ class Create extends AbstractPageComponent implements HasForms
                     ->options([
                         'pending' => 'Pending',
                         'paid' => 'Paid',
+                        'cancelled' => 'Cancelled',
                     ])
-                    ->default('pending')
                     ->required(),
                 Forms\Components\TextInput::make('payment_reference')
                     ->maxLength(255)
@@ -86,37 +80,66 @@ class Create extends AbstractPageComponent implements HasForms
                     ->rows(3)
                     ->columnSpanFull(),
             ])
+            ->columns(2)
             ->statePath('data');
     }
 
-    public function create(CreateCommissionAction $action): void
+    public function update(UpdateCommissionAction $action): void
     {
         $data = $this->form->getState();
 
         $order = Order::query()->with('items')->findOrFail($data['order_id']);
-        $seller = isset($data['seller_id']) ? User::query()->find($data['seller_id']) : null;
+        $seller = filled($data['seller_id'] ?? null)
+            ? User::query()->findOrFail($data['seller_id'])
+            : null;
 
-        $action->execute(
+        $commission = $action->execute(
+            commission: $this->commission,
             order: $order,
             seller: $seller,
             rate: (float) $data['rate'],
             amount: filled($data['amount'] ?? null) ? (float) $data['amount'] : null,
-            status: $data['status'] ?? 'pending',
+            status: $data['status'],
             paymentReference: $data['payment_reference'] ?? null,
             notes: $data['notes'] ?? null,
         );
 
         Notification::make()
-            ->title('Commission created')
+            ->title('Commission updated')
             ->success()
             ->send();
 
-        $this->redirectRoute('shopper.commissions.index', navigate: true);
+        $this->redirectRoute('shopper.commissions.show', $commission, navigate: true);
     }
 
     public function render(): View
     {
-        return view('livewire.commission.create')
-            ->title('Create Commission');
+        return view('livewire.commission.edit')
+            ->title('Edit Commission');
+    }
+
+    private function orderOptions(): array
+    {
+        return Order::query()
+            ->with('items')
+            ->latest()
+            ->limit(100)
+            ->get()
+            ->mapWithKeys(fn (Order $order): array => [
+                $order->id => $order->number . ' - ' . $order->currency_code . ' ' . number_format($order->total() / 100, 2),
+            ])
+            ->all();
+    }
+
+    private function sellerOptions(): array
+    {
+        return User::query()
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get()
+            ->mapWithKeys(fn (User $user): array => [
+                $user->id => $user->full_name . ' - ' . $user->email,
+            ])
+            ->all();
     }
 }

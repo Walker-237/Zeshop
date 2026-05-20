@@ -8,29 +8,33 @@ use App\Models\Commission;
 use App\Models\User;
 use Shopper\Core\Models\Order;
 
-final class CreateCommissionAction
+final class UpdateCommissionAction
 {
     public function execute(
+        Commission $commission,
         Order $order,
-        ?User $seller = null,
-        float $rate = 10.0,
-        ?float $amount = null,
-        string $status = 'pending',
-        ?string $paymentReference = null,
-        ?string $notes = null,
+        ?User $seller,
+        float $rate,
+        ?float $amount,
+        string $status,
+        ?string $paymentReference,
+        ?string $notes,
     ): Commission {
         $amount ??= round(($order->total() / 100) * ($rate / 100), 2);
 
-        return Commission::query()->updateOrCreate([
+        $commission->update([
             'seller_id' => $seller?->id,
             'order_id' => $order->id,
-        ], [
             'amount' => $amount,
             'rate' => $rate,
             'status' => $status,
-            'paid_at' => $status === 'paid' ? now() : null,
+            'paid_at' => $status === 'paid'
+                ? ($commission->paid_at ?? now())
+                : null,
             'payment_reference' => $status === 'paid' ? $paymentReference : null,
             'notes' => $notes,
         ]);
+
+        return $commission->refresh();
     }
 }

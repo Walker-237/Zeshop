@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Report;
 
+use App\Actions\Report\BuildOperationalOverviewAction;
 use App\Models\Report;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -13,6 +14,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Shopper\Livewire\Pages\AbstractPageComponent;
 
 class Index extends AbstractPageComponent implements HasForms, HasTable
@@ -20,9 +22,13 @@ class Index extends AbstractPageComponent implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
+    public array $overview = [];
+
     public function mount(): void
     {
         $this->authorize('viewAny', Report::class);
+
+        $this->overview = $this->buildOverview();
     }
 
     public function table(Table $table): Table
@@ -91,5 +97,91 @@ class Index extends AbstractPageComponent implements HasForms, HasTable
         return view('livewire.report.index', [
             'latestReport' => Report::query()->latest('generated_at')->first(),
         ])->title('Reports');
+    }
+
+    public function exportOverviewCsv(): StreamedResponse
+    {
+        $this->authorize('viewAny', Report::class);
+
+        $overview = $this->overview ?: $this->buildOverview();
+        $filename = 'operational-overview-' . now()->format('Y-m-d-His') . '.csv';
+
+        return response()->streamDownload(function () use ($overview): void {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, ['Operational Overview']);
+            fputcsv($handle, ['Period Start', $overview['period']['start']]);
+            fputcsv($handle, ['Period End', $overview['period']['end']]);
+            fputcsv($handle, []);
+
+            fputcsv($handle, ['Summary']);
+            fputcsv($handle, ['Metric', 'Value']);
+            foreach ($overview['summary'] as $label => $value) {
+                fputcsv($handle, [(string) str($label)->replace('_', ' ')->title(), $value]);
+            }
+            fputcsv($handle, []);
+
+            fputcsv($handle, ['Orders By Status']);
+            fputcsv($handle, ['Status', 'Orders']);
+            foreach ($overview['orders_by_status'] as $status => $count) {
+                fputcsv($handle, [$status, $count]);
+            }
+            fputcsv($handle, []);
+
+            fputcsv($handle, ['Top Products By Sales']);
+            fputcsv($handle, ['Product', 'SKU', 'Units Sold', 'Revenue']);
+            foreach ($overview['top_products'] as $product) {
+                fputcsv($handle, [$product['name'], $product['sku'], $product['units_sold'], $product['revenue']]);
+            }
+            fputcsv($handle, []);
+
+            fputcsv($handle, ['Recent Stock Movements']);
+            fputcsv($handle, ['Date', 'Product', 'Inventory', 'Quantity', 'Old Quantity', 'Event', 'User', 'Description']);
+            foreach ($overview['recent_stock_movements'] as $movement) {
+                fputcsv($handle, [
+                    $movement['created_at'],
+                    $movement['product'],
+                    $movement['inventory'],
+                    $movement['quantity'],
+                    $movement['old_quantity'],
+                    $movement['event'],
+                    $movement['user'],
+                    $movement['description'],
+                ]);
+            }
+            fputcsv($handle, []);
+
+            fputcsv($handle, ['Low Stock Products']);
+            fputcsv($handle, ['Product', 'SKU', 'Stock On Hand', 'Security Stock']);
+            foreach ($overview['low_stock_products'] as $product) {
+                fputcsv($handle, [$product['name'], $product['sku'], $product['stock_on_hand'], $product['security_stock']]);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    private function buildOverview(): array
+    {
+        $overview = app(BuildOperationalOverviewAction::class)->execute();
+
+        return [
+            'period' => [
+                'start' => $overview['period']['start']->format('M j, Y'),
+                'end' => $overview['period']['end']->format('M j, Y'),
+            ],
+            'summary' => $overview['summary'],
+            'orders_by_status' => $overview['orders_by_status'],
+            'top_products' => $overview['top_products']->toArray(),
+            'recent_stock_movements' => $overview['recent_stock_movements']
+                ->map(fn (array $movement): array => [
+                    ...$movement,
+                    'created_at' => $movement['created_at']?->format('M j, Y g:i A') ?? '',
+                ])
+                ->toArray(),
+            'low_stock_products' => $overview['low_stock_products']->toArray(),
+        ];
     }
 }

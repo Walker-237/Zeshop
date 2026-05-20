@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Commission;
 
 use App\Models\Commission;
+use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Support\Enums\MaxWidth;
@@ -22,9 +23,13 @@ class Index extends AbstractPageComponent implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
+    public array $summary = [];
+
     public function mount(): void
     {
         $this->authorize('viewAny', Commission::class);
+
+        $this->summary = $this->summary();
     }
 
     public function table(Table $table): Table
@@ -62,7 +67,18 @@ class Index extends AbstractPageComponent implements HasForms, HasTable
                         'warning' => 'pending',
                         'success' => 'paid',
                         'danger' => 'cancelled',
-                    ]),
+                    ])
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('paid_at')
+                    ->dateTime()
+                    ->placeholder('Not paid')
+                    ->sortable()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('payment_reference')
+                    ->label('Reference')
+                    ->placeholder('None')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -75,18 +91,45 @@ class Index extends AbstractPageComponent implements HasForms, HasTable
                         'paid' => 'Paid',
                         'cancelled' => 'Cancelled',
                     ]),
+                Tables\Filters\Filter::make('unpaid')
+                    ->label('Unpaid')
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'pending')),
+                Tables\Filters\Filter::make('paid_this_month')
+                    ->label('Paid this month')
+                    ->query(fn (Builder $query): Builder => $query
+                        ->where('status', 'paid')
+                        ->whereBetween('paid_at', [now()->startOfMonth(), now()->endOfMonth()])),
             ])
             ->actions([
+                Tables\Actions\Action::make('view')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (Commission $record): string => route('shopper.commissions.show', $record)),
+                Tables\Actions\Action::make('edit')
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil-square')
+                    ->url(fn (Commission $record): string => route('shopper.commissions.edit', $record))
+                    ->visible(fn (Commission $record): bool => auth()->user()?->can('update', $record) ?? false),
                 Tables\Actions\Action::make('markPaid')
                     ->label('Mark paid')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (Commission $record): bool => auth()->user()?->can('update', $record) && $record->status !== 'paid')
                     ->authorize(fn (Commission $record): bool => auth()->user()?->can('update', $record) ?? false)
-                    ->action(fn (Commission $record) => $record->update([
-                        'status' => 'paid',
-                        'paid_at' => now(),
-                    ])),
+                    ->form([
+                        Forms\Components\TextInput::make('payment_reference')
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('notes')
+                            ->rows(3),
+                    ])
+                    ->action(function (Commission $record, array $data): void {
+                        $record->markPaid(
+                            paymentReference: $data['payment_reference'] ?? null,
+                            notes: $data['notes'] ?? null,
+                        );
+
+                        $this->summary = $this->summary();
+                    }),
                 Tables\Actions\Action::make('cancel')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
@@ -94,9 +137,34 @@ class Index extends AbstractPageComponent implements HasForms, HasTable
                     ->requiresConfirmation()
                     ->visible(fn (Commission $record): bool => auth()->user()?->can('update', $record) && $record->status !== 'cancelled')
                     ->authorize(fn (Commission $record): bool => auth()->user()?->can('update', $record) ?? false)
-                    ->action(fn (Commission $record) => $record->update([
-                        'status' => 'cancelled',
-                    ])),
+                    ->form([
+                        Forms\Components\Textarea::make('notes')
+                            ->rows(3),
+                    ])
+                    ->action(function (Commission $record, array $data): void {
+                        $record->cancel($data['notes'] ?? null);
+
+                        $this->summary = $this->summary();
+                    }),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (Commission $record): bool => auth()->user()?->can('delete', $record) ?? false),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkAction::make('markPaid')
+                    ->label('Mark paid')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function ($records): void {
+                        $records
+                            ->filter(fn (Commission $commission): bool => auth()->user()?->can('update', $commission) && $commission->status !== 'paid')
+                            ->each(fn (Commission $commission) => $commission->markPaid());
+
+                        $this->summary = $this->summary();
+                    }),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->visible(fn (): bool => auth()->user()?->can('delete_commissions') ?? false),
             ])
             ->filtersFormWidth(MaxWidth::Medium);
     }
@@ -105,5 +173,19 @@ class Index extends AbstractPageComponent implements HasForms, HasTable
     {
         return view('livewire.commission.index')
             ->title('Commissions');
+    }
+
+    private function summary(): array
+    {
+        $query = Commission::query();
+
+        return [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'paid' => (clone $query)->where('status', 'paid')->count(),
+            'cancelled' => (clone $query)->where('status', 'cancelled')->count(),
+            'pending_amount' => (float) (clone $query)->where('status', 'pending')->sum('amount'),
+            'paid_amount' => (float) (clone $query)->where('status', 'paid')->sum('amount'),
+        ];
     }
 }

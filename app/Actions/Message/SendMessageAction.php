@@ -9,9 +9,15 @@ use App\Models\User;
 
 final class SendMessageAction
 {
-    public function execute(User $sender, User $recipient, string $subject, string $body): Message
-    {
+    public function execute(
+        User $sender,
+        User $recipient,
+        string $subject,
+        string $body,
+        ?Message $parent = null,
+    ): Message {
         return Message::query()->create([
+            'parent_id' => $parent?->id,
             'sender_id' => $sender->id,
             'recipient_id' => $recipient->id,
             'subject' => $subject,

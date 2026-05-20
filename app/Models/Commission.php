@@ -17,6 +17,7 @@ class Commission extends Model
         'rate',
         'status',
         'paid_at',
+        'payment_reference',
         'notes',
     ];
 
@@ -37,5 +38,23 @@ class Commission extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id');
+    }
+
+    public function markPaid(?string $paymentReference = null, ?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+            'payment_reference' => $paymentReference,
+            'notes' => $notes ?? $this->notes,
+        ]);
+    }
+
+    public function cancel(?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'cancelled',
+            'notes' => $notes ?? $this->notes,
+        ]);
     }
 }
