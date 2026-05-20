@@ -25,6 +25,12 @@ final class AssignDeliveryAction
             'status' => $deliveryPerson ? 'assigned' : 'pending',
             'scheduled_for' => $scheduledFor,
             'assigned_at' => $deliveryPerson ? now() : null,
+            'picked_up_at' => null,
+            'delivered_at' => null,
+            'failed_at' => null,
+            'cancelled_at' => null,
+            'delivered_to' => null,
+            'failure_reason' => null,
             'notes' => $notes,
         ]);
     }

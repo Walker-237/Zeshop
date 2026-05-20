@@ -46,7 +46,7 @@ class Create extends AbstractPageComponent implements HasForms
                 Forms\Components\TextInput::make('tracking_number')
                     ->label('Tracking Number')
                     ->maxLength(255)
-                    ->unique(table: 'deliveries', column: 'tracking_number', ignoreRecord: true),
+                    ->unique(table: 'deliveries', column: 'tracking_number'),
                 Forms\Components\DateTimePicker::make('scheduled_for')
                     ->label('Scheduled For')
                     ->seconds(false),

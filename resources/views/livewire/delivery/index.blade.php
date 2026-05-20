@@ -12,6 +12,27 @@
         @endcan
     </x-shopper::heading>
 
+    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-shopper::card class="p-4">
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Deliveries</p>
+            <p class="mt-2 text-2xl font-semibold text-gray-950 dark:text-white">{{ $summary['total'] }}</p>
+        </x-shopper::card>
+        <x-shopper::card class="p-4">
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Pending Assignment</p>
+            <p class="mt-2 text-2xl font-semibold text-warning-600">{{ $summary['pending'] }}</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $summary['scheduled_today'] }} scheduled today</p>
+        </x-shopper::card>
+        <x-shopper::card class="p-4">
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
+            <p class="mt-2 text-2xl font-semibold text-info-600">{{ $summary['in_progress'] }}</p>
+        </x-shopper::card>
+        <x-shopper::card class="p-4">
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Delivered</p>
+            <p class="mt-2 text-2xl font-semibold text-success-600">{{ $summary['delivered'] }}</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $summary['failed'] }} failed</p>
+        </x-shopper::card>
+    </div>
+
     <x-shopper::card class="p-4">
         {{ $this->table }}
     </x-shopper::card>
